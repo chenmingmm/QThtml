@@ -21,6 +21,7 @@
 #include <iostream>
 #include <QMessageBox>  
 #include <QSettings>  //¶ÁĞ´iniÎÄ¼ş
+#include <QDateEdit>
 
 enum RETURNCODE
 {
@@ -270,12 +271,8 @@ void QHtml::InitFilterParam()
         QDoubleSpinBox *sb3 = new QDoubleSpinBox();
         sb3->setRange(0, 999);
         sb3->setValue(filter.Deductioninterestforevery100000);
-        QSpinBox *sb4 = new QSpinBox();
-        sb4->setRange(0, 999);
-        sb4->setValue(filter.endDaysMin);
-        QSpinBox *sb5 = new QSpinBox();
-        sb5->setRange(0, 999);
-        sb5->setValue(filter.endDaysMax);
+        QDateEdit *sb4 = new QDateEdit();
+        QDateEdit *sb5 = new QDateEdit();
         ui.filterList->setCellWidget(filter.index, 0, le1);
         ui.filterList->setCellWidget(filter.index, 1, sb);
         ui.filterList->setCellWidget(filter.index, 2, sb1);
@@ -300,10 +297,8 @@ void QHtml::AddFilterParam()
     sb2->setRange(0, 9999);
     QDoubleSpinBox *sb3 = new QDoubleSpinBox();
     sb3->setRange(0, 999);
-    QSpinBox *sb4 = new QSpinBox();
-    sb4->setRange(0, 999);
-    QSpinBox *sb5 = new QSpinBox();
-    sb5->setRange(0, 999);
+    QDateEdit *sb4 = new QDateEdit();
+    QDateEdit *sb5 = new QDateEdit();
     ui.filterList->setCellWidget(row, 0, le1);
     ui.filterList->setCellWidget(row, 1, sb);
     ui.filterList->setCellWidget(row, 2, sb1);
@@ -334,10 +329,10 @@ void QHtml::SetFilterParam()
         auto sb2 = (QDoubleSpinBox*)ui.filterList->cellWidget(i, 4);
         param.Deductioninterestforevery100000 = sb2->value();
 
-        auto sb3 = (QSpinBox*)ui.filterList->cellWidget(i, 5);
+        auto sb3 = (QDateEdit*)ui.filterList->cellWidget(i, 5);
         param.endDaysMin = sb3->value();
 
-        auto sb5 = (QSpinBox*)ui.filterList->cellWidget(i, 6);
+        auto sb5 = (QDateEdit*)ui.filterList->cellWidget(i, 6);
         param.endDaysMax = sb5->value();
         param.index = i;
         m_filterParams.push_back(param);
