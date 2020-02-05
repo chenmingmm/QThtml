@@ -5,6 +5,7 @@
 #include <x2struct.hpp>
 #include <FilterParam.h>
 #include <list>
+#include <QNetworkAccessManager>
 
 using namespace x2struct;
 
@@ -23,16 +24,30 @@ struct LoginResult
 
 struct OrderParam
 {
-    int ticketId;
-    int ticketType;
-    int payType;
+    std::string CHANNEL;
+    std::string SOURCE;
+    std::string VERSION;
     int endorseId;
-    int ticketPrice;
-    bool useDefault;
-    std::string version;
     std::string hundredThousandCharge;
+    int payType;
+    int ticketId;
+    int ticketPrice;
+    int ticketType;
+    bool useDefault;
+    float yearRate = 0.f;
+    float dealPrice = 0.f;
 
-    XTOSTRUCT(O(ticketId, ticketType, version, ticketPrice, payType, useDefault, hundredThousandCharge, endorseId));
+    XTOSTRUCT(O(ticketId, ticketType, VERSION, ticketPrice, payType, useDefault, hundredThousandCharge, endorseId, CHANNEL, SOURCE, yearRate, dealPrice));
+};
+
+struct OrderInfoParam
+{
+    std::string channel;
+    std::string source;
+    int ticketId;
+    std::string version;
+
+    XTOSTRUCT(O(channel, source, ticketId, version));
 };
 
 struct LoinInfo
@@ -49,6 +64,16 @@ struct ReturnParam
     std::string msg;
 
     XTOSTRUCT(O(code, msg));
+};
+
+struct ReturnOrderInfoParam
+{
+    float yearQuote = 0.f;
+    float totalPrice = 0.f;
+    int ticketType;
+    int ticketPrice;
+    int ticketId;
+
 };
 
 class QNetworkReply;
@@ -87,6 +112,8 @@ public slots:
 
     void DelteFilterParam();
 
+    void ClearNetWorkManager();
+
 private:
     Ui::QHtmlClass ui;
 
@@ -95,4 +122,8 @@ private:
     LoinInfo m_loginInfo;
 
     std::list<FilterParam> m_filterParams;
+
+    std::list<QNetworkAccessManager*> lstNetWorkManager;
+
+    std::set<int> hasOrder;
 };

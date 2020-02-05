@@ -1,6 +1,5 @@
 #include "QHtml.h"
 #include <qnetworkrequest.h>
-#include <QNetworkAccessManager>
 #include<QNetworkReply>
 #include <QDebug>
 #include <iostream>
@@ -45,6 +44,7 @@ struct data_list
     std::string flawDescription; //è¦´Ã
     int ticketId;
     int ticketType;
+    int rateDay;
 
     int IsDataMeetParam(const FilterParam& param)
     {
@@ -80,7 +80,7 @@ struct data_list
 
         int tenNum = (int)ticketPrice / 10;
         if (!qFuzzyIsNull(param.yearRoute)) {
-            float price = (ticketPrice * 10000.f * (param.yearRoute * 0.01f) * day) / 360.f + (param.Deductioninterestforevery100000 * tenNum);
+            float price = (ticketPrice * 10000.f * (param.yearRoute * 0.01f) * rateDay) / 360.f + (param.Deductioninterestforevery100000 * tenNum);
             if (price >= atof(sellPrice.c_str()) * tenNum) {
                 return RETURNCODE_YEARROUTE;
             }
@@ -90,7 +90,7 @@ struct data_list
     }
   
 
-    XTOSTRUCT(O(yearQuote, endTime, bankName, sellPrice, ticketPrice, tradeEndorseTime, flawDescription, ticketId, ticketType));
+    XTOSTRUCT(O(yearQuote, endTime, bankName, sellPrice, ticketPrice, tradeEndorseTime, flawDescription, ticketId, ticketType, rateDay));
 };
 
 struct Showdata
@@ -158,7 +158,7 @@ void QHtml::RequestData()
     naManager->post(request, postData);
 
     QObject::connect(naManager, &QNetworkAccessManager::finished, this, &QHtml::RequestFinish);
-    
+    lstNetWorkManager.push_back(naManager);
 }
 
 void QHtml::RequestLogin()
@@ -179,6 +179,7 @@ void QHtml::RequestLogin()
     naManager->post(request, postData);
 
     QObject::connect(naManager, &QNetworkAccessManager::finished, this, &QHtml::RequestLoginFinish);
+    lstNetWorkManager.push_back(naManager);
 }
 
 void QHtml::RequestOrder(const data_list& data)
@@ -194,15 +195,25 @@ void QHtml::RequestOrder(const data_list& data)
     QByteArray postData;
     OrderParam param;
     param.ticketId = data.ticketId;
-    param.version = "3.5";
+    param.VERSION = "3.5";
     param.useDefault = false;
     param.ticketPrice = (int)data.ticketPrice;
     param.ticketType = data.ticketType;
     param.payType = m_loginInfo.payType;
     param.endorseId = m_loginInfo.endorseId;
     param.hundredThousandCharge = data.sellPrice;
+    param.yearRate = data.yearQuote;
+    param.dealPrice = data.ticketPrice - (data.ticketPrice * data.yearQuote * 100 * data.rateDay) / 360 / 10000;
+    param.CHANNEL = "01";
+    param.SOURCE = "HTML";
     std::string paramstr = X::tojson(param);
-    postData.append(paramstr.c_str());
+
+    char buff[1024] = {0};
+    QString yearRate = QString::number(data.yearQuote);
+    QString dealPrice = QString::number(param.dealPrice);
+    QString poststring = QString("{\"ticketId\":%1,\"ticketType\":%2,\"VERSION\":\"3.5\",\"ticketPrice\":%3,\"payType\":%4,\"useDefault\":false,\"hundredThousandCharge\":\"%5\",\"endorseId\":%6,\"CHANNEL\":\"01\",\"SOURCE\":\"HTML\",\"yearRate\":%7,\"dealPrice\":%8}").
+        arg(data.ticketId).arg(data.ticketType).arg(data.ticketPrice).arg(m_loginInfo.payType).arg(data.sellPrice.c_str()).arg(m_loginInfo.endorseId).arg(yearRate).arg(dealPrice);
+    postData.append(poststring);
     naManager->post(request, postData);
     QObject::connect(naManager, &QNetworkAccessManager::finished, this, &QHtml::RequestOrderFinish);
 }
@@ -381,6 +392,16 @@ void QHtml::DelteFilterParam()
     }
 }
 
+void QHtml::ClearNetWorkManager()
+{
+    auto iter = lstNetWorkManager.begin();
+    for (; iter != lstNetWorkManager.end(); iter++)
+    {
+        delete *iter;
+    }
+    lstNetWorkManager.clear();
+}
+
 void QHtml::RequestFinish(QNetworkReply* reply)
 {
     QVariant statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
@@ -411,7 +432,6 @@ void QHtml::RequestFinish(QNetworkReply* reply)
         bool filter = true;
         int ret = 0;
         int meetCount = 0;
-        std::set<int> hasOrder;
         for (auto iter : param.data.list)
         {
             for (const auto& filterIter : m_filterParams)
@@ -467,7 +487,8 @@ void QHtml::RequestFinish(QNetworkReply* reply)
             }
         }    
     }   
-     
+
+    ClearNetWorkManager();
 }
 
 void QHtml::RequestLoginFinish(QNetworkReply*reply)
