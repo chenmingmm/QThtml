@@ -42,7 +42,7 @@ struct data_list
     std::string bankName;
     std::string sellPrice; //每十万扣息
     std::string tradeEndorseTime;
-    std::list<std::string> flawStatusName; //瑕疵
+    std::string flawDescription; //瑕疵
     int ticketId;
     int ticketType;
 
@@ -53,7 +53,7 @@ struct data_list
         }
 
         QString str = QString::fromLocal8Bit("无瑕疵");
-        if (std::find(flawStatusName.begin(), flawStatusName.end(), str.toStdString()) == flawStatusName.end()) {
+        if (flawDescription != str.toStdString()) {
             return RETURNCODE_FLAW;
         }
 
@@ -90,7 +90,7 @@ struct data_list
     }
   
 
-    XTOSTRUCT(O(yearQuote, endTime, bankName, sellPrice, ticketPrice, tradeEndorseTime, flawStatusName, ticketId, ticketType));
+    XTOSTRUCT(O(yearQuote, endTime, bankName, sellPrice, ticketPrice, tradeEndorseTime, flawDescription, ticketId, ticketType));
 };
 
 struct Showdata
@@ -437,7 +437,7 @@ void QHtml::RequestFinish(QNetworkReply* reply)
                 ui.tableWidget->setItem(index, 2, new QTableWidgetItem(iter.endTime.c_str()));//到期日
                 ui.tableWidget->setItem(index, 3, new QTableWidgetItem(iter.sellPrice.c_str()));//每十万扣息
                 ui.tableWidget->setItem(index, 4, new QTableWidgetItem(QString("%1").arg(iter.yearQuote)));//年息
-                ui.tableWidget->setItem(index, 5, new QTableWidgetItem(iter.flawStatusName.front().c_str()));//瑕疵
+                ui.tableWidget->setItem(index, 5, new QTableWidgetItem(iter.flawDescription.c_str()));//瑕疵                      
                 ui.tableWidget->setItem(index, 6, new QTableWidgetItem(iter.tradeEndorseTime.c_str()));//交易平均时长
                 index++;
             }
