@@ -36,7 +36,7 @@ enum RETURNCODE
 struct data_list
 {
     float ticketPrice = 0.0f;  // 金额
-    float yearQuote = 0.0f;//年息
+    std::string yearQuote;
     std::string endTime; // 到期日
     std::string bankName;
     std::string sellPrice; //每十万扣息
@@ -144,17 +144,18 @@ void QHtml::RequestData()
 {
     QNetworkAccessManager* naManager = new QNetworkAccessManager;
     QNetworkRequest request;
-    request.setUrl(QUrl("https://new.tcpjw.com/order-web/orderInfo/getTradingOrderInfo"));
+    request.setUrl(QUrl("https://www.tcpjw.com/order-web/orderInfo/getTradingOrderInfo"));
     request.setRawHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36");
-    request.setRawHeader("Cookie", "acw_tc=74cf71a215737323978855511e5b80da827895d64081a603db520fd2c8; access_token=9c1b635e-8101-4f8c-8e7d-659324f9d201");
+    request.setRawHeader("Cookie", "_uab_collina=157694514337367845423208; acw_tc=74cf71a015904103999372759e5ba6382cf3f3fda15e1627f93bf096b9; access_token=db1ab687-dc65-4ebc-91c2-c4849b8b0a45");
     request.setRawHeader("Content-Type", "application/json;charset=UTF-8");
     std::string authorization = "Bearer " + loginRes.data.accessToken;
     request.setRawHeader("Authorization", authorization.c_str());
-    request.setRawHeader("Content-Length", "381");
+    request.setRawHeader("Content-Length", "702");
     request.setRawHeader("Accept-Language", "zh-CN,zh;q=0.9");
     //request.setRawHeader("Accept-Encoding", "gzip, deflate, br");
     QByteArray postData;
-    postData.append("{\"version\":\"3.5\",\"channel\":\"01\",\"pageNum\":1,\"pageSize\":30}");
+    //postData.append("{\"version\":\"3.5\",\"channel\":\"01\",\"orderColumn\":null,\"pageNum\":1,\"pageSize\":30,\"sortType\":\"\"}");
+    postData.append(m_loginInfo.postData.c_str());
     naManager->post(request, postData);
 
     QObject::connect(naManager, &QNetworkAccessManager::finished, this, &QHtml::RequestFinish);
@@ -168,6 +169,7 @@ void QHtml::RequestLogin()
     request.setUrl(QUrl("https://www.tcpjw.com/commodule-web/account/login"));
     request.setRawHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36");
     request.setRawHeader("Content-Type", "application/json");
+    request.setRawHeader("Authorization", m_loginInfo.token.c_str());
     QByteArray postData;
     LoginParam param;
 
@@ -202,14 +204,14 @@ void QHtml::RequestOrder(const data_list& data)
     param.payType = m_loginInfo.payType;
     param.endorseId = m_loginInfo.endorseId;
     param.hundredThousandCharge = data.sellPrice;
-    param.yearRate = data.yearQuote;
-    param.dealPrice = data.ticketPrice - (data.ticketPrice * data.yearQuote * 100 * data.rateDay) / 360 / 10000;
+    param.yearRate = atof(data.yearQuote.c_str());
+    param.dealPrice = data.ticketPrice - (data.ticketPrice * param.yearRate * 100 * data.rateDay) / 360 / 10000;
     param.CHANNEL = "01";
     param.SOURCE = "HTML";
     std::string paramstr = X::tojson(param);
 
     char buff[1024] = {0};
-    QString yearRate = QString::number(data.yearQuote);
+    QString yearRate = data.yearQuote.c_str();
     QString dealPrice = QString::number(param.dealPrice);
     QString poststring = QString("{\"ticketId\":%1,\"ticketType\":%2,\"VERSION\":\"3.5\",\"ticketPrice\":%3,\"payType\":%4,\"useDefault\":false,\"hundredThousandCharge\":\"%5\",\"endorseId\":%6,\"CHANNEL\":\"01\",\"SOURCE\":\"HTML\",\"yearRate\":%7,\"dealPrice\":%8}").
         arg(data.ticketId).arg(data.ticketType).arg(data.ticketPrice).arg(m_loginInfo.payType).arg(data.sellPrice.c_str()).arg(m_loginInfo.endorseId).arg(yearRate).arg(dealPrice);
@@ -311,6 +313,7 @@ void QHtml::AddFilterParam()
     sb2->setRange(0, 9999);
     QDoubleSpinBox *sb3 = new QDoubleSpinBox();
     sb3->setRange(0, 999);
+    sb3->setDecimals(3);
     QSpinBox *sb4 = new QSpinBox();
     sb4->setRange(0, 999);
     QSpinBox *sb5 = new QSpinBox();
@@ -375,7 +378,17 @@ void QHtml::InitLoginInfo()
     m_loginInfo.password = configIni.value("loginInfo/password").toString().toStdString();
     m_loginInfo.endorseId = configIni.value("loginInfo/endorseId").toInt();
     m_loginInfo.payType = configIni.value("loginInfo/payType").toInt();
+    m_loginInfo.token = configIni.value("loginInfo/token").toString().toStdString();
     QRequestThread::Get()->timeInterval = (configIni.value("Time/timeInterval").toInt()*1000);
+
+    std::ifstream ifs;
+    ifs.open("postdata.txt", std::ios::in);
+    if (ifs.is_open()) {
+        while (getline(ifs, m_loginInfo.postData))
+        {
+
+        }
+    }
 }
 
 void QHtml::DelteFilterParam()
@@ -437,14 +450,10 @@ void QHtml::RequestFinish(QNetworkReply* reply)
             for (const auto& filterIter : m_filterParams)
             {
                 filter = false;
-                if (hasOrder.end() != hasOrder.find(iter.ticketId)) {
-                    break;
-                }
                 ret = iter.IsDataMeetParam(filterIter);
                 if (ret == RETURNCODE_SUCCESS) {
                     filter = true;
                     ui.LogOutput->append(QString::fromLocal8Bit("校验成功开始抢票"));
-                    hasOrder.insert(iter.ticketId);
                     meetCount++;
                     RequestOrder(iter);
                     break;
@@ -456,7 +465,7 @@ void QHtml::RequestFinish(QNetworkReply* reply)
                 ui.tableWidget->setItem(index, 1, new QTableWidgetItem(QString("%1").arg(tickprice)));//金额
                 ui.tableWidget->setItem(index, 2, new QTableWidgetItem(iter.endTime.c_str()));//到期日
                 ui.tableWidget->setItem(index, 3, new QTableWidgetItem(iter.sellPrice.c_str()));//每十万扣息
-                ui.tableWidget->setItem(index, 4, new QTableWidgetItem(QString("%1").arg(iter.yearQuote)));//年息
+                ui.tableWidget->setItem(index, 4, new QTableWidgetItem(iter.yearQuote.c_str()));//年息
                 ui.tableWidget->setItem(index, 5, new QTableWidgetItem(iter.flawDescription.c_str()));//瑕疵                      
                 ui.tableWidget->setItem(index, 6, new QTableWidgetItem(iter.tradeEndorseTime.c_str()));//交易平均时长
                 index++;
@@ -508,7 +517,8 @@ void QHtml::RequestLoginFinish(QNetworkReply*reply)
         QString str = read.data();
         QString  readstring = QString::fromUtf8(read);
         X::loadjson(readstring.toStdString(), loginRes, false);
-        if (!loginRes.data.accessToken.empty()) {
+        loginRes.data.accessToken = m_loginInfo.token;
+        if (!m_loginInfo.token.empty()) {
             QObject::connect(QRequestThread::Get(), &QRequestThread::RequestDataFinishSignals, this, &QHtml::RequestData);
             char buff[128];
             sprintf(buff, "<font color=\"#66CC00\">%s 登陆成功</font>", m_loginInfo.iphone.c_str());

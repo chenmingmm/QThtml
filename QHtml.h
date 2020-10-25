@@ -54,6 +54,8 @@ struct LoinInfo
 {
     std::string iphone;
     std::string password;
+    std::string token;
+    std::string postData;
     int endorseId;
     int payType;
 };
